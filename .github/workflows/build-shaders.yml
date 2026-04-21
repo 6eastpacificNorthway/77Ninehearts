@@ -24,10 +24,37 @@ jobs:
       - name: Download ShaderCompile
         shell: pwsh
         run: |
-          $url = "https://github.com/SCell555/ShaderCompile/releases/download/build_235_20231013.2/ShaderCompile.7z"
           New-Item -ItemType Directory -Force -Path tools | Out-Null
-          Invoke-WebRequest -Uri $url -OutFile tools/sc.7z
-          7z x tools/sc.7z -otools -y
+
+          $api = "https://api.github.com/repos/SCell555/ShaderCompile/releases/latest"
+          Write-Host "Querying $api"
+          $release = Invoke-RestMethod -Uri $api -Headers @{ "User-Agent" = "gh-actions" }
+
+          Write-Host "Release: $($release.tag_name)"
+          Write-Host "Assets:"
+          $release.assets | ForEach-Object { Write-Host "  - $($_.name) ($($_.size) bytes)" }
+
+          # Pick the first asset that looks like a compiled binary archive
+          $asset = $release.assets | Where-Object {
+              $_.name -match '\.(7z|zip)$' -and $_.name -notmatch 'source'
+          } | Select-Object -First 1
+
+          if (-not $asset) {
+              throw "No binary asset found on latest release. Available: $($release.assets.name -join ', ')"
+          }
+
+          Write-Host "Downloading: $($asset.name) from $($asset.browser_download_url)"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "tools/sc_archive"
+
+          # Extract based on extension
+          if ($asset.name -match '\.7z$') {
+              7z x tools/sc_archive -otools -y
+          } else {
+              Expand-Archive -Path tools/sc_archive -DestinationPath tools -Force
+          }
+
+          Write-Host "Extraction complete. Contents of tools/:"
+          Get-ChildItem -Path tools -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
 
       - name: Locate ShaderCompile.exe
         id: locate
