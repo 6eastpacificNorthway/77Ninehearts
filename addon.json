@@ -1,0 +1,20 @@
+{
+    "title": "PS2 Horror Aesthetic (Haunting Ground Style)",
+    "type": "gamemode_content",
+    "tags": ["Fun", "Roleplay"],
+    "ignore": [
+        "*.psd",
+        "*.vcproj",
+        "*.svn*",
+        "shadersrc/*",
+        "tools/*",
+        ".github/*",
+        ".git/*",
+        ".gitignore",
+        "*.py",
+        "*.png",
+        "*.md",
+        "*.sh",
+        "test/*"
+    ]
+}

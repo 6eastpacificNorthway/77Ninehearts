@@ -1,0 +1,59 @@
+// ps2_master.vmt -- combined PS2 horror post-process material
+// Uses the undocumented 'screenspace_general' shader with a custom pixel shader.
+//
+// The $pixshader reference matches the HLSL source filename (minus _ps2x or .hlsl).
+// ShaderCompile produces <name>_ps20b.vcs; Source automatically picks the right
+// variant based on the client's DX level, so we reference without the _ps20b suffix.
+
+"screenspace_general"
+{
+	// Compiled shader binary lives at garrysmod/shaders/fxc/ps2_master_ps2x.vcs
+	$pixshader "ps2_master_ps2x"
+
+	// Enable vertex transformations so the shader works beyond r_screenoverlay
+	$x360appchooser 1
+
+	// Pass scene alpha channel through to the shader
+	$copyalpha 1
+
+	// Base framebuffer texture -- the rendered scene
+	$basetexture "_rt_FullFrameFB"
+
+	// --- Custom shader parameters (16 float constants in c0..c3) ---
+	// Defaults tuned to the Haunting Ground palette.
+
+	// c0: dither + color grading basics
+	$c0_x 6.0      // color depth levels (6 ~= PS2 RGB565 banding)
+	$c0_y 0.3      // dither strength (0.3 = stipple only at band transitions, 0.5 = stipple everywhere)
+	$c0_z 0.45     // saturation
+	$c0_w 1.18     // contrast
+
+	// c1: shadow tint + chroma aberration
+	$c1_x -0.02    // shadow R
+	$c1_y 0.015    // shadow G
+	$c1_z 0.055    // shadow B (positive = cyan push)
+	$c1_w 0.003    // chromatic aberration amount
+
+	// c2: highlight tint + vignette
+	$c2_x 0.04     // highlight R (warm)
+	$c2_y 0.02     // highlight G
+	$c2_z -0.03    // highlight B
+	$c2_w 0.25     // vignette strength (0.4 was too heavy combined with other darkening)
+
+	// c3: scanlines + master blend
+	$c3_x 0.08     // scanline strength
+	$c3_y 24.0     // scanline count (24 bands across screen = ~45px bands at 1080p)
+	$c3_z 0.95     // brightness multiplier
+	$c3_w 1.0      // master effect blend (1 = full, 0 = off)
+
+	$ignorez 1
+	$nofog 1
+	$nolod 1
+	$translucent 1
+
+	// DX8 fallback: don't try to draw on old hardware (custom pixel shaders need DX9+)
+	"<dx90"
+	{
+		$no_draw 1
+	}
+}

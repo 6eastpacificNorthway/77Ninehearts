@@ -1,0 +1,23 @@
+// ps2_chroma.vmt -- chromatic aberration only, for testing or stacking
+
+"screenspace_general"
+{
+	$pixshader "ps2_chroma_ps2x"
+	$x360appchooser 1
+	$copyalpha 1
+	$basetexture "_rt_FullFrameFB"
+
+	$c0_x 0.004    // aberration strength in UV units
+	$c0_y 2.0      // radial falloff power
+	$c0_z 0.8      // horizontal bias (0 = radial, 1 = horizontal)
+	$c0_w 0.0      // unused
+
+	$ignorez 1
+	$nofog 1
+	$translucent 1
+
+	"<dx90"
+	{
+		$no_draw 1
+	}
+}

@@ -1,0 +1,23 @@
+// ps2_crt.vmt -- composite video + scanlines + barrel distortion only
+
+"screenspace_general"
+{
+	$pixshader "ps2_crt_ps2x"
+	$x360appchooser 1
+	$copyalpha 1
+	$basetexture "_rt_FullFrameFB"
+
+	$c0_x 0.10     // scanline strength
+	$c0_y 24.0     // scanline count (24 bands across screen)
+	$c0_z 0.002    // chroma blur width in UV
+	$c0_w 0.02     // barrel distortion amount
+
+	$ignorez 1
+	$nofog 1
+	$translucent 1
+
+	"<dx90"
+	{
+		$no_draw 1
+	}
+}

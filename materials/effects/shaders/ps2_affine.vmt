@@ -1,0 +1,35 @@
+// ps2_affine.vmt -- screen-space affine warp approximation
+// Uses the CurrentTime material proxy to animate the wobble.
+
+"screenspace_general"
+{
+	$pixshader "ps2_affine_ps2x"
+	$x360appchooser 1
+	$copyalpha 1
+	$basetexture "_rt_FullFrameFB"
+
+	$c0_x 0.003    // warp amount
+	$c0_y 0.0      // time phase (driven by proxy below)
+	$c0_z 3.0      // wobble frequency
+	$c0_w 0.3      // vertical bias (0 = horizontal, 1 = vertical)
+
+	$ignorez 1
+	$nofog 1
+	$translucent 1
+
+	"<dx90"
+	{
+		$no_draw 1
+	}
+
+	// Drive $c0_y with a 0-1 sawtooth based on real time.
+	// The CurrentTime proxy stores current time in seconds; we wrap to [0,1)
+	// via MultiplyBy + Frac for seamless looping.
+	Proxies
+	{
+		CurrentTime
+		{
+			resultVar $c0_y
+		}
+	}
+}

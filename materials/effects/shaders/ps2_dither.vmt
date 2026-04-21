@@ -1,0 +1,37 @@
+// ps2_dither.vmt -- dithering + color grading + vignette only (no CA, no CRT, no scanlines)
+// Use for testing/tuning just the dithering pass.
+
+"screenspace_general"
+{
+	$pixshader "ps2_dither_ps2x"
+	$x360appchooser 1
+	$copyalpha 1
+	$basetexture "_rt_FullFrameFB"
+
+	// c0: core dither + grading
+	$c0_x 6.0      // color depth levels
+	$c0_y 0.3      // dither strength (0.3 = stipple only at transitions)
+	$c0_z 0.45     // saturation
+	$c0_w 0.95     // brightness
+
+	// c1: shadow tint + contrast
+	$c1_x -0.02    // shadow R
+	$c1_y 0.015    // shadow G
+	$c1_z 0.055    // shadow B (cyan push)
+	$c1_w 1.18     // contrast
+
+	// c2: highlight tint + vignette
+	$c2_x 0.04     // highlight R (warm)
+	$c2_y 0.02     // highlight G
+	$c2_z -0.03    // highlight B
+	$c2_w 0.4      // vignette strength
+
+	$ignorez 1
+	$nofog 1
+	$translucent 1
+
+	"<dx90"
+	{
+		$no_draw 1
+	}
+}

@@ -1,0 +1,15 @@
+// Bayer 8x8 dither pattern -- used by the Lua fallback renderer to overlay
+// ordered dithering on-screen when native shaders aren't available.
+// The VTF has POINT_SAMPLE set so the pattern stays crisp regardless of Source's
+// filtering defaults.
+
+"UnlitGeneric"
+{
+	$basetexture "ps2_horror/bayer8x8"
+	$translucent 1
+	$vertexcolor 1
+	$vertexalpha 1
+	$ignorez 1
+	$nolod 1
+	$nomip 1
+}
