@@ -11,7 +11,7 @@ PS2Horror.MasterMaterial = nil
 
 -- Convars (server can force-push these)
 CreateClientConVar("ps2_horror_enabled",            "1",     true, false)
-CreateClientConVar("ps2_horror_force_lua",          "0",     true, false,
+CreateClientConVar("ps2_horror_force_lua",          "1",     true, false,
     "Force the Lua fallback even if native shaders are installed")
 CreateClientConVar("ps2_horror_color_depth",        "6.0",   true, false)
 CreateClientConVar("ps2_horror_dither_strength",    "0.3",   true, false)
