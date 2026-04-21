@@ -95,11 +95,10 @@ jobs:
           Write-Host "Compiler:  $compiler"
           Write-Host "Output:    $outDir"
           Write-Host "Source:    $srcDir"
-          Write-Host ""
-          Write-Host "Source dir contents:"
-          Get-ChildItem -Path $srcDir | ForEach-Object { Write-Host "  $($_.Name)" }
 
           Push-Location $srcDir
+          Write-Host "Changed to: $(Get-Location)"
+          Write-Host ""
 
           $list = Get-Content "compile_shader_list.txt" |
               Where-Object { $_ -and -not $_.StartsWith("#") }
@@ -111,36 +110,34 @@ jobs:
               $hlsl = $hlsl.Trim()
               if (-not $hlsl) { continue }
 
-              $hlslPath = Join-Path $srcDir $hlsl
-              $fxcName  = [System.IO.Path]::ChangeExtension($hlsl, ".fxc")
-              $fxcPath  = Join-Path $srcDir $fxcName
-
-              if (-not (Test-Path $hlslPath)) {
-                  Write-Warning "Skipping missing source: $hlslPath"
+              if (-not (Test-Path $hlsl)) {
+                  Write-Warning "Skipping missing source: $hlsl"
                   continue
               }
+
+              $fxcName = [System.IO.Path]::ChangeExtension($hlsl, ".fxc")
 
               Write-Host ""
               Write-Host "=== Compiling $hlsl ==="
-              Write-Host "  Source:  $hlslPath"
-              Write-Host "  Temp:    $fxcPath"
 
-              Copy-Item -LiteralPath $hlslPath -Destination $fxcPath -Force
-              if (-not (Test-Path $fxcPath)) {
-                  Write-Error "Copy failed: $fxcPath was not created"
+              Copy-Item -LiteralPath $hlsl -Destination $fxcName -Force
+              if (-not (Test-Path $fxcName)) {
+                  Write-Error "Copy failed: $fxcName was not created"
                   $failed += $hlsl
                   continue
               }
-              Write-Host "  Copied OK. Size: $((Get-Item $fxcPath).Length) bytes"
+              Write-Host "  Copied OK. Size: $((Get-Item $fxcName).Length) bytes"
+              Write-Host "  CWD: $(Get-Location)"
+              Write-Host "  Running: ShaderCompile.exe -ver 20b -shaderpath $outDir $fxcName"
 
               $beforeFiles = @(Get-ChildItem -Path $outDir -Recurse -File -ErrorAction SilentlyContinue |
                   Select-Object -ExpandProperty FullName)
 
-              & $compiler -ver 20b -shaderpath $outDir $fxcPath
+              & $compiler -ver 20b -shaderpath "$outDir" $fxcName
               $code = $LASTEXITCODE
               Write-Host "  Exit code: $code"
 
-              Remove-Item -LiteralPath $fxcPath -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath $fxcName -Force -ErrorAction SilentlyContinue
 
               if ($code -ne 0) {
                   Write-Error "ShaderCompile failed on $hlsl (exit $code)"
