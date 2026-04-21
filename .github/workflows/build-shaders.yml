@@ -1,0 +1,134 @@
+name: Build Shaders
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'shadersrc/**'
+      - '.github/workflows/build-shaders.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download ShaderCompile
+        shell: pwsh
+        run: |
+          $url = "https://github.com/SCell555/ShaderCompile/releases/download/build_235_20231013.2/ShaderCompile.7z"
+          New-Item -ItemType Directory -Force -Path tools | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile tools/sc.7z
+          7z x tools/sc.7z -otools -y
+
+      - name: Locate ShaderCompile.exe
+        id: locate
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path tools -Filter ShaderCompile.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { throw "ShaderCompile.exe not found after extraction" }
+          if ($exe.FullName -ne (Resolve-Path "tools/ShaderCompile.exe" -ErrorAction SilentlyContinue)) {
+            Copy-Item $exe.FullName "tools/ShaderCompile.exe" -Force
+          }
+          Write-Host "Using: $(Resolve-Path tools/ShaderCompile.exe)"
+
+      - name: Prepare output directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path shaders/fxc | Out-Null
+
+      - name: Compile shaders
+        shell: pwsh
+        working-directory: shadersrc
+        run: |
+          $compiler = Resolve-Path "../tools/ShaderCompile.exe"
+          $outDir   = Resolve-Path "../shaders"
+
+          $list = Get-Content compile_shader_list.txt |
+              Where-Object { $_ -and -not $_.StartsWith("#") }
+
+          $failed = @()
+          $manifest = @()
+
+          foreach ($hlsl in $list) {
+              $hlsl = $hlsl.Trim()
+              if (-not (Test-Path $hlsl)) {
+                  Write-Warning "Skipping missing file: $hlsl"
+                  continue
+              }
+
+              $fxc = [System.IO.Path]::ChangeExtension($hlsl, ".fxc")
+              Copy-Item $hlsl $fxc -Force
+
+              $beforeFiles = @(Get-ChildItem -Path $outDir -Recurse -File -ErrorAction SilentlyContinue |
+                  Select-Object -ExpandProperty FullName)
+
+              Write-Host ""
+              Write-Host "=== Compiling $hlsl ==="
+              & $compiler -ver 20 -shaderpath $outDir $fxc
+              $code = $LASTEXITCODE
+
+              Remove-Item $fxc -Force -ErrorAction SilentlyContinue
+
+              if ($code -ne 0) {
+                  Write-Error "ShaderCompile failed on $hlsl (exit $code)"
+                  $failed += $hlsl
+                  continue
+              }
+
+              $afterFiles = @(Get-ChildItem -Path $outDir -Recurse -File -ErrorAction SilentlyContinue |
+                  Select-Object -ExpandProperty FullName)
+
+              $newFiles = $afterFiles | Where-Object { $beforeFiles -notcontains $_ }
+              if (-not $newFiles) {
+                  Write-Warning "No new files produced for $hlsl"
+                  $failed += $hlsl
+                  continue
+              }
+
+              foreach ($f in $newFiles) {
+                  $manifest += [pscustomobject]@{
+                      Source = $hlsl
+                      Output = (Resolve-Path $f).Path.Replace("$($outDir)\", "").Replace("$($outDir)/", "")
+                  }
+              }
+          }
+
+          Write-Host ""
+          Write-Host "=== Compile manifest ==="
+          $manifest | Format-Table -AutoSize
+
+          $manifest | ConvertTo-Json | Out-File -FilePath "../shaders/_manifest.json" -Encoding utf8
+
+          if ($failed.Count -gt 0) {
+              throw "Shader compilation failed for: $($failed -join ', ')"
+          }
+
+      - name: List compiled artifacts
+        shell: pwsh
+        run: |
+          Write-Host "Compiled .vcs files:"
+          Get-ChildItem -Path shaders -Recurse -Filter *.vcs | ForEach-Object {
+              Write-Host "  $($_.FullName.Replace((Get-Location).Path, '').TrimStart('\'))"
+          }
+
+      - name: Commit compiled shaders
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shaders/
+          if (git diff --cached --quiet) {
+              Write-Host "No shader changes to commit."
+          } else {
+              git commit -m "Rebuild shaders [skip ci]"
+              git push
+          }
