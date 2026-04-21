@@ -34,30 +34,27 @@ jobs:
           Write-Host "Assets:"
           $release.assets | ForEach-Object { Write-Host "  - $($_.name) ($($_.size) bytes)" }
 
-          # Pick the first asset that looks like a compiled binary archive
           $asset = $release.assets | Where-Object {
               $_.name -match '\.(7z|zip)$' -and $_.name -notmatch 'source'
           } | Select-Object -First 1
 
           if (-not $asset) {
-              throw "No binary asset found on latest release. Available: $($release.assets.name -join ', ')"
+              throw "No binary asset found on latest release."
           }
 
-          Write-Host "Downloading: $($asset.name) from $($asset.browser_download_url)"
+          Write-Host "Downloading: $($asset.name)"
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "tools/sc_archive"
 
-          # Extract based on extension
           if ($asset.name -match '\.7z$') {
               7z x tools/sc_archive -otools -y
           } else {
               Expand-Archive -Path tools/sc_archive -DestinationPath tools -Force
           }
 
-          Write-Host "Extraction complete. Contents of tools/:"
+          Write-Host "Contents of tools/:"
           Get-ChildItem -Path tools -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
 
       - name: Locate ShaderCompile.exe
-        id: locate
         shell: pwsh
         run: |
           $exe = Get-ChildItem -Path tools -Filter ShaderCompile.exe -Recurse | Select-Object -First 1
@@ -66,6 +63,22 @@ jobs:
             Copy-Item $exe.FullName "tools/ShaderCompile.exe" -Force
           }
           Write-Host "Using: $(Resolve-Path tools/ShaderCompile.exe)"
+
+      - name: Show ShaderCompile help
+        shell: pwsh
+        run: |
+          $compiler = Resolve-Path "tools/ShaderCompile.exe"
+          Write-Host "=== ShaderCompile -h ==="
+          & $compiler -h 2>&1 | ForEach-Object { Write-Host $_ }
+          Write-Host ""
+          Write-Host "=== ShaderCompile --help ==="
+          & $compiler --help 2>&1 | ForEach-Object { Write-Host $_ }
+          Write-Host ""
+          Write-Host "=== ShaderCompile with no args ==="
+          & $compiler 2>&1 | ForEach-Object { Write-Host $_ }
+          Write-Host ""
+          Write-Host "(Always exiting 0 so the workflow continues)"
+          exit 0
 
       - name: Prepare output directory
         shell: pwsh
@@ -100,7 +113,7 @@ jobs:
 
               Write-Host ""
               Write-Host "=== Compiling $hlsl ==="
-              & $compiler -ver 20 -shaderpath $outDir $fxc
+              & $compiler -ver 20b -shaderpath $outDir $fxc
               $code = $LASTEXITCODE
 
               Remove-Item $fxc -Force -ErrorAction SilentlyContinue
